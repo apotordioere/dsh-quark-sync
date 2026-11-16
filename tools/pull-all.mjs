@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createCli } from '../lib/cli.js';
 import { createEngine } from '../lib/engine.js';
-import { DEFAULT_SCOPES, resolveScopes, deviceId } from '../lib/scope.js';
+import { resolveAllScopes, deviceId } from '../lib/scope.js';
 
 const home = os.homedir();
 const CLI_DIR = process.env.QUARK_SKILL_DIR || path.join(home, '.dsh', 'skills', 'quarkclouddrive');
@@ -28,7 +28,8 @@ const log = (m) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0)}s] ${m}
 const cli = createCli({ cliPath: path.join(CLI_DIR, 'scripts', 'quark-drive.cjs'), cwd: CLI_DIR, concurrency: 2 });
 const engine = createEngine({
   cli,
-  scopes: resolveScopes(DEFAULT_SCOPES.filter((s) => s.default)),
+  scopes: resolveAllScopes(),
+  refreshScopes: () => resolveAllScopes(),
   statePath: path.join(stateRoot, 'state.json'),
   deviceId: registry.deviceId,
   dshVersion: '0.2.2-rc.3',

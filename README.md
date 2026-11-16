@@ -8,7 +8,7 @@
 
 ## 同步范围
 
-默认同步以下 13 项（DSH 状态与工作区双向同步；`harness/app` 只上行，B 机不会盲覆盖）：
+默认同步以下 DSH 状态范围，并自动读取 `%USERPROFILE%\.dsh\storages\workspace.json` 纳入全部已注册工作区（DSH 状态与工作区双向同步；`harness/app` 只上行，B 机不会盲覆盖）。新注册工作区会在下一轮同步自动发现。工作区云端目录由名称生成稳定键，因此两台机器工作区名称应一致；本机 `workspace.json` 不跨设备覆盖，B 机按自己的注册路径接收文件。
 
 | # | 内容 | 本地路径 |
 |---|------|----------|
@@ -23,7 +23,7 @@
 | 9 | DSH 应用本体（只上行） | `D:\deepseek\resources` |
 | 10 | Torso 插件源码 | `D:\torso` |
 | 11 | 本机插件源码 | `D:\dsh-plugins` |
-| 12 | 工作区 | `D:\DESKTOP\DEEPSEEK专用` |
+| 12 | 主工作区与所有注册工作区（自动发现） | `workspace.json` 中登记的路径（主工作区为 `D:\DESKTOP\DEEPSEEK专用`） |
 | 13 | 聊天附件（5.4 GB） | `~/.dsh/attachments` |
 
 ## 使用
@@ -34,15 +34,15 @@
 - `push`：把本机变更上传到夸克网盘。
 - `pull`：把云端变更下载到本机。
 
-`cordis.patch.yml` 里 `autoSync` 控制定时自动同步（现为 `true`，每 `intervalSeconds`=900 秒一轮：先 push 再 pull）。一轮完整扫描+哈希 37k 文件约 1.5 分钟，间隔不要设太短。
+`cordis.patch.yml` 里的 `autoSync` 控制定时自动同步。当前配置为关闭（`autoSync: false`、`autoPull: false`）；完成夸克 CLI 安装/授权并验证首轮同步后，再手动启用。启用后按 `intervalSeconds: 43200`（12 小时）先 push 再 pull。也可随时手动调用 `quark_sync`。
 
 ## 新电脑（B 机）上手
 
-1. 装好同版本 DSH，工作区路径与 Mnemon 路径必须和 A 机一致：`D:\DESKTOP\DEEPSEEK专用`、`D:\Mnemon`。
-2. 把夸克官方 skill 目录复制到 `%USERPROFILE%\.dsh\skills\quarkclouddrive`，用同一授权码登录：`node scripts\quark-drive.cjs login --token <授权码> --session-input '...' --session-id '<ts>-<rand6>'`。
-3. 把本插件目录放到 `D:\DESKTOP\DEEPSEEK专用\dsh-quark-sync`，在 DSH 里安装：`plugin_manager install_bundle`，target 填该目录绝对路径。
-4. 让 Agent 调 `quark_sync` 的 `pull`，等它把 1 万多个文件拉完（首次约 20–40 分钟）。
-5. 重启 DSH，会话列表里就会出现 A 机同步过来的会话，直接接着干活。之后两台机器都在 `autoSync` 下每 15 分钟自动对齐一次，也可以随时手动 `quark_sync`。
+1. 装好同版本 DSH，先在 B 机创建/注册需要接手的工作区（名称需与 A 机一致；路径可不同），并确认 Mnemon 使用 `D:\Mnemon`。插件按本机 `workspace.json` 把云端工作区映射到 B 机各自注册的路径。
+2. 在 B 机按夸克官方 skill 的安装说明安装 CLI 并单独完成账号授权；不要复制 A 机的密钥文件。该 CLI 安装需先通过其 `scripts/install.sh` 检查。
+3. 从本插件仓库下载并解压插件目录。在 B 机使用该版本 DSH 提供的本地 bundle 安装能力安装此目录；安装入口因版本而异，安装后确认插件状态为 active。若该机没有本地插件安装入口，需要由该机的 DSH 管理工具执行 `plugin_manager install_bundle`，目标为解压后的绝对目录路径。
+4. 确认 B 机已注册全部同名工作区，再让 Agent 调 `quark_sync` 的 `pull`。本机最近一次只读预检约 45.6 GB、8.2 万个文件（其中 `.git` / `node_modules` 等排除项不下载）；耗时取决于网络和夸克限速，不能保证固定时长。
+5. 检查 DSH 会话列表及工作区文件后，再启用自动同步。首次安装配置默认关闭自动 push/pull；启用后两台机器每 12 小时自动 push 后 pull，也可手动调用 `quark_sync`。
 
 ## 云端残留（需手动清理）
 
@@ -59,6 +59,7 @@
 ## 已知限制
 
 - 夸克 CLI 不能覆盖也不能删除文件，旧版本块只累积不回收，需要时人工清理云端 `DSH-Sync/blobs`。
-- `~/.dsh/.credentials.yaml` 是明文密钥，会随同步上传；不同步就把第 5 项从 `lib/scope.js` 的 `default` 改成 `false`。
-- 两台机器的盘符与路径必须一致，否则会话按工作区路径编码的目录名对不上。
-- 首传约 11.7 GB、1 万多个文件，压缩后仍要传数 GB；受夸克 CLI 单路速度限制，实际约 2–3 MB/s。
+- 默认范围会上传 `~/.dsh/.credentials.yaml` 明文密钥、会话与附件；所有工作区内容也会进入个人夸克账号。云端访问权限/账号安全随之成为这些资料的安全边界；上传前确认设备与账号可信，不要把网盘目录公开分享。
+- 动态工作区按 NFKC 规范化后的工作区名称建立云端 key；两台机器必须为同一工作区使用相同且唯一的名称。每台机器的本地路径可不同，但需先在 DSH 注册该工作区。工作区同步排除 `.git` 和 `node_modules`，不会同步 Git 元数据或依赖安装目录；B 机需自行安装依赖。符号链接/目录联接形式的工作区根目录会被跳过，避免越界扫描。主工作区路径仍影响会话目录编码，若要让会话 UI 完全匹配，建议两端路径一致。
+- `workspace.json` 保留在各自本机，不会从云端覆盖；B 机需先用同名注册工作区，插件才能映射到正确本地路径。
+- 最近一次只读预检约 45.6 GB、8.2 万个文件（取决于当时注册表与本机文件；上传压缩体积和耗时会变化），首传时间取决于网络和夸克限速，不能保证固定时长。

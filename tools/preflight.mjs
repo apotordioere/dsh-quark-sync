@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createCli } from '../lib/cli.js';
-import { DEFAULT_SCOPES, resolveScopes, deviceId } from '../lib/scope.js';
+import { resolveAllScopes, deviceId } from '../lib/scope.js';
 import { scanAll } from '../lib/scan.js';
 
 const CLI_DIR = process.env.QUARK_SKILL_DIR || path.join(os.homedir(), '.dsh', 'skills', 'quarkclouddrive');
@@ -12,7 +12,7 @@ const workRoot = path.join(os.tmpdir(), 'qs-preflight');
 await fs.mkdir(workRoot, { recursive: true });
 
 const cli = createCli({ cliPath: path.join(CLI_DIR, 'scripts', 'quark-drive.cjs'), cwd: CLI_DIR, concurrency: 2 });
-const scopes = resolveScopes(DEFAULT_SCOPES.filter((s) => s.default));
+const scopes = resolveAllScopes();
 
 const t0 = Date.now();
 const log = (m) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] ${m}`);

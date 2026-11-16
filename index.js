@@ -1,13 +1,14 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createCli } from './lib/cli.js';
 import { createEngine } from './lib/engine.js';
-import { DEFAULT_SCOPES, deviceId as makeDeviceId, resolveScopes } from './lib/scope.js';
+import { DEFAULT_SCOPES, deviceId as makeDeviceId, resolveAllScopes } from './lib/scope.js';
 
 const DEFAULT_CONFIG = {
   autoSync: false,
   autoPull: false,
-  intervalSeconds: 300,
+  intervalSeconds: 43200,
   pullOnStart: false,
   cloudRoot: 'DSH-Sync',
   cliPath: '%USERPROFILE%\\.dsh\\skills\\quarkclouddrive\\scripts\\quark-drive.cjs',
@@ -42,11 +43,20 @@ export const Config = {
 };
 
 /** 展开 Windows 的 %VAR% 和跨平台的 ${VAR}。 */
-function expandEnv(value) {
+export function expandEnv(value) {
   if (typeof value !== 'string') return value;
+  const home = os.homedir();
+  const fallback = {
+    USERPROFILE: home,
+    HOME: home,
+    APPDATA: path.join(home, 'AppData', 'Roaming'),
+    LOCALAPPDATA: path.join(home, 'AppData', 'Local'),
+    TEMP: os.tmpdir(),
+    TMP: os.tmpdir(),
+  };
   return path.normalize(value
-    .replace(/%([^%]+)%/g, (_, name) => process.env[name] || '')
-    .replace(/\$\{([^}]+)\}/g, (_, name) => process.env[name] || ''));
+    .replace(/%([^%]+)%/g, (_, name) => process.env[name] || fallback[name] || '')
+    .replace(/\$\{([^}]+)\}/g, (_, name) => process.env[name] || fallback[name] || ''));
 }
 
 /** 读取宿主版本；开发环境或非标准打包路径失败时返回 unknown。 */
@@ -117,11 +127,7 @@ export function apply(ctx, config = {}) {
   } else {
     // 必须走 resolveScopes：DEFAULT_SCOPES 里存的是 %USERPROFILE% 这类占位符，
     // 直接传给引擎会把所有 C 盘范围内的根目录写成字面量（实测全部 ENOENT，等于漏同步一半数据）。
-    const pickedScopes = resolveScopes(
-      Array.isArray(resolvedConfig.enabledScopes) && resolvedConfig.enabledScopes.length > 0
-        ? DEFAULT_SCOPES.filter((scope) => resolvedConfig.enabledScopes.includes(scope.id))
-        : DEFAULT_SCOPES.filter((scope) => scope.default === true),
-    );
+    const pickedScopes = resolveAllScopes(resolvedConfig.enabledScopes, log);
     const cli = createCli({
       cliPath,
       // cwd 必须指向 skill 根目录（quark-drive.cjs 的上一级 scripts 的上一级）：
@@ -133,6 +139,7 @@ export function apply(ctx, config = {}) {
     engine = createEngine({
       cli,
       scopes: pickedScopes,
+      refreshScopes: () => resolveAllScopes(resolvedConfig.enabledScopes, log),
       statePath,
       deviceId: stableDeviceId,
       dshVersion,
