@@ -34,7 +34,7 @@
 - `push`：把本机变更上传到夸克网盘。
 - `pull`：把云端变更下载到本机。
 
-`cordis.patch.yml` 里的 `autoSync` 控制定时自动同步。当前配置为关闭（`autoSync: false`、`autoPull: false`）；完成夸克 CLI 安装/授权并验证首轮同步后，再手动启用。启用后按 `intervalSeconds: 43200`（12 小时）先 push 再 pull。也可随时手动调用 `quark_sync`。
+`cordis.patch.yml` 里的 `autoSync` 控制定时自动同步。当前配置已开启（`autoSync: true`、`autoPull: true`）；首轮全量 push 完成后，曾观察到 DSH 运行时持续改写 profile/session 文件，导致 pull 期间出现变化。随后重新 push 当前快照，再连续两次 pull 均为 `updated: 0`，才开启定时同步。插件按 `intervalSeconds: 43200`（12 小时）先 push 再 pull，也可随时手动调用 `quark_sync`。如需先观察而不产生后台请求，可将这两个开关改回 `false`。
 
 ## 新电脑（B 机）上手
 

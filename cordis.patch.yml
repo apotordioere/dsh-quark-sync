@@ -2,9 +2,9 @@
     - id: quark-sync
       name: 'dsh-quark-sync'
       config:
-        # Quark CLI 安装与授权检查完成、首轮同步验证前保持关闭，避免后台请求
-        autoSync: false
-        autoPull: false
-        # 启用后每 12 小时自动同步一次（先 push，再 pull）
+        # 已完成 Quark CLI 授权、首轮 push 和两次 pull 幂等验证
+        autoSync: true
+        autoPull: true
+        # 每 12 小时自动同步一次（先 push，再 pull）
         intervalSeconds: 43200
         pullOnStart: false
