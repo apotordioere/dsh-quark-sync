@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Quark Cloud Sync",
+    "description": "Bidirectionally sync DSH data and workspaces via Quark Drive",
+    "detail": "docs/DETAIL.md"
+  }
+}

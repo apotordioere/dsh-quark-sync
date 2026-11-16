@@ -1,0 +1,16 @@
+﻿import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { createCli } from '../lib/cli.js';
+const home = os.homedir();
+const CLI_DIR = path.join(home, '.dsh', 'skills', 'quarkclouddrive');
+const state = JSON.parse(await fs.readFile(path.join(home, '.dsh', 'dsh-quark-sync', 'state.json'), 'utf8'));
+const cli = createCli({ cliPath: path.join(CLI_DIR, 'scripts', 'quark-drive.cjs'), cwd: CLI_DIR, concurrency: 1 });
+const taskDir = path.join(os.tmpdir(), `qs-count-${Date.now()}`);
+await fs.mkdir(taskDir, { recursive: true });
+const listing = await cli.browse(state.cloud.blobsFid, { taskDir });
+const files = listing.items.filter((it) => String(it.file_type) === '1');
+const bytes = files.reduce((a, it) => a + Number(it.size || 0), 0);
+const recent = files.slice().sort((a,b)=>b.updated_at-a.updated_at).slice(0,3).map(f=>`${f.filename.slice(0,12)} ${(f.size/1048576).toFixed(1)}MB ${new Date(f.updated_at/1000).toLocaleTimeString()}`);
+console.log(`blobs: ${files.length} / ${(bytes/1048576).toFixed(0)} MB`);
+console.log('最近3个:', recent.join(' | '));

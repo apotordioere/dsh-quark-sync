@@ -1,0 +1,7 @@
+node_modules/
+*.log
+*.qsync.tmp
+*.qsync-prev
+.dsh-quark-sync/
+.DS_Store
+Thumbs.db

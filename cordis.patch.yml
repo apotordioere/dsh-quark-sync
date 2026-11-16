@@ -1,0 +1,10 @@
+- insert:
+    - id: quark-sync
+      name: 'dsh-quark-sync'
+      config:
+        # 定时自动同步（每轮先 push 再 push 完 pull，顺序保证本机改动不会被远端旧版覆盖）
+        autoSync: true
+        autoPull: true
+        # 一轮完整扫描+哈希 37k 文件约 1.5 分钟，间隔太短会一直在扫，用 15 分钟
+        intervalSeconds: 900
+        pullOnStart: false
